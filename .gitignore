@@ -1,0 +1,26 @@
+# MacOS
+.DS_Store
+
+# Node
+node_modules/
+dist/
+build/
+
+# VSCode
+.vscode/
+
+# Logs
+*.log
+
+# OS-specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Backup files
+*.bak
+*.swp
+
+# Python or Colab (if experimenting)
+__pycache__/
+*.ipynb_checkpoints/
