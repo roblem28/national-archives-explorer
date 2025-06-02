@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>National Archives Explorer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-100 p-6 min-h-screen flex flex-col items-center justify-start">
+
+  <div class="w-full max-w-3xl bg-white p-6 rounded shadow">
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">National Archives Explorer</h1>
+    
+    <div class="flex gap-4 mb-4">
+      <input id="searchInput" class="flex-grow p-3 border rounded shadow" placeholder="Search e.g. Apollo 11 photos">
+      <button id="searchButton" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded shadow">Search</button>
+    </div>
+
+    <div id="loadingIndicator" class="text-gray-500 hidden">🔄 Searching archives...</div>
+    <div id="errorArea" class="text-red-700 hidden mt-2"></div>
+    <div id="resultsContainer" class="space-y-4 mt-6"></div>
+
+    <p class="mt-6 text-center text-sm text-gray-500">
+      Powered by the <a href="https://www.archives.gov/developers/api-catalog" class="text-indigo-600 underline" target="_blank">National Archives API</a> (via proxy).
+    </p>
+  </div>
+
+  <script>
+    const input = document.getElementById("searchInput");
+    const button = document.getElementById("searchButton");
+    const results = document.getElementById("resultsContainer");
+    const loading = document.getElementById("loadingIndicator");
+    const error = document.getElementById("errorArea");
+
+    const proxy = "https://corsproxy.io/?";
+    const apiBase = "https://catalog.archives.gov/api/v2/records";
+
+    button.addEventListener("click", search);
+    input.addEventListener("keypress", e => { if (e.key === "Enter") search(); });
+
+    async function search() {
+      const query = input.value.trim();
+      if (!query) return;
+
+      results.innerHTML = "";
+      error.classList.add("hidden");
+      loading.classList.remove("hidden");
+
+      const url = `${apiBase}?q=${encodeURIComponent(query)}&rows=10`;
+
+      try {
+        const res = await fetch(proxy + encodeURIComponent(url));
+        const data = await res.json();
+        const items = data.opaResponse?.results?.result || [];
+
+        loading.classList.add("hidden");
+
+        if (items.length === 0) {
+          results.innerHTML = `<p class="text-gray-500">No results found.</p>`;
+          return;
+        }
+
+        items.forEach(item => {
+          const title = item.description?.item?.title || "Untitled";
+          const id = item.naId;
+          const link = `https://catalog.archives.gov/id/${id}`;
+          const card = `
+            <div class="border p-4 rounded shadow bg-white">
+              <h2 class="font-semibold text-lg mb-2">${title}</h2>
+              <a href="${link}" target="_blank" class="text-blue-600 underline">View Record</a>
+            </div>
+          `;
+          results.innerHTML += card;
+        });
+
+      } catch (err) {
+        loading.classList.add("hidden");
+        error.textContent = "❌ Search failed. Proxy or API may be unavailable.";
+        error.classList.remove("hidden");
+        console.error("API Error:", err);
+      }
+    }
+  </script>
+</body>
+</html>
