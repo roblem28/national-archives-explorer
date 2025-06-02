@@ -2,29 +2,31 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>National Archives Explorer</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: sans-serif; }
   </style>
 </head>
-<body class="bg-gray-100 p-6 min-h-screen flex flex-col items-center justify-start">
+<body class="bg-gray-100 p-6 min-h-screen flex flex-col items-center">
 
   <div class="w-full max-w-3xl bg-white p-6 rounded shadow">
-    <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">National Archives Explorer</h1>
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-4">National Archives Explorer</h1>
     
-    <div class="flex gap-4 mb-4">
-      <input id="searchInput" class="flex-grow p-3 border rounded shadow" placeholder="Search e.g. Apollo 11 photos">
-      <button id="searchButton" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded shadow">Search</button>
+    <p class="text-sm text-gray-600 mb-4 text-center">Search U.S. historical records using the National Archives Catalog API</p>
+
+    <div class="flex gap-2 mb-4">
+      <input id="searchInput" class="flex-grow p-3 border border-gray-300 rounded" placeholder="Try 'Apollo 11' or 'Civil War'">
+      <button id="searchButton" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded">Search</button>
     </div>
 
-    <div id="loadingIndicator" class="text-gray-500 hidden">🔄 Searching archives...</div>
-    <div id="errorArea" class="text-red-700 hidden mt-2"></div>
-    <div id="resultsContainer" class="space-y-4 mt-6"></div>
+    <div id="loadingIndicator" class="hidden text-center text-gray-500 mb-2">🔄 Loading...</div>
+    <div id="errorArea" class="hidden text-red-600 mb-2 text-center font-medium"></div>
+    <div id="resultsContainer" class="space-y-4"></div>
 
-    <p class="mt-6 text-center text-sm text-gray-500">
-      Powered by the <a href="https://www.archives.gov/developers/api-catalog" class="text-indigo-600 underline" target="_blank">National Archives API</a> (via proxy).
+    <p class="text-sm text-center text-gray-400 mt-8">
+      Built with the <a class="text-indigo-600 underline" href="https://www.archives.gov/developers/api-catalog" target="_blank">National Archives Catalog API</a>
     </p>
   </div>
 
@@ -35,11 +37,13 @@
     const loading = document.getElementById("loadingIndicator");
     const error = document.getElementById("errorArea");
 
-    const proxy = "https://corsproxy.io/?";
-    const apiBase = "https://catalog.archives.gov/api/v2/records";
+    const PROXY = "https://corsproxy.io/?";
+    const API = "https://catalog.archives.gov/api/v2/records";
 
     button.addEventListener("click", search);
-    input.addEventListener("keypress", e => { if (e.key === "Enter") search(); });
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") search();
+    });
 
     async function search() {
       const query = input.value.trim();
@@ -49,38 +53,39 @@
       error.classList.add("hidden");
       loading.classList.remove("hidden");
 
-      const url = `${apiBase}?q=${encodeURIComponent(query)}&rows=10`;
+      const fullUrl = PROXY + encodeURIComponent(`${API}?q=${encodeURIComponent(query)}&rows=10`);
 
       try {
-        const res = await fetch(proxy + encodeURIComponent(url));
-        const data = await res.json();
+        const response = await fetch(fullUrl);
+        if (!response.ok) throw new Error("Network error");
+
+        const data = await response.json();
         const items = data.opaResponse?.results?.result || [];
 
         loading.classList.add("hidden");
 
         if (items.length === 0) {
-          results.innerHTML = `<p class="text-gray-500">No results found.</p>`;
+          results.innerHTML = `<p class="text-gray-500 text-center">No results found for "${query}".</p>`;
           return;
         }
 
-        items.forEach(item => {
+        for (const item of items) {
           const title = item.description?.item?.title || "Untitled";
-          const id = item.naId;
-          const link = `https://catalog.archives.gov/id/${id}`;
-          const card = `
-            <div class="border p-4 rounded shadow bg-white">
-              <h2 class="font-semibold text-lg mb-2">${title}</h2>
-              <a href="${link}" target="_blank" class="text-blue-600 underline">View Record</a>
-            </div>
-          `;
-          results.innerHTML += card;
-        });
+          const naId = item.naId;
+          const recordUrl = `https://catalog.archives.gov/id/${naId}`;
+
+          results.innerHTML += `
+            <div class="p-4 bg-white border rounded shadow-sm">
+              <h2 class="text-lg font-semibold text-gray-800 mb-2">${title}</h2>
+              <a href="${recordUrl}" target="_blank" class="text-blue-600 underline text-sm">View Full Record →</a>
+            </div>`;
+        }
 
       } catch (err) {
         loading.classList.add("hidden");
-        error.textContent = "❌ Search failed. Proxy or API may be unavailable.";
+        error.textContent = "❌ Could not load results. The proxy or API may be down.";
         error.classList.remove("hidden");
-        console.error("API Error:", err);
+        console.error("Fetch error:", err);
       }
     }
   </script>
